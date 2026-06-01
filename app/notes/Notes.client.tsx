@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import {
+  keepPreviousData,
+  useQuery,
+} from '@tanstack/react-query';
 import { fetchNotes } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import SearchBox from '@/components/SearchBox/SearchBox';
@@ -13,16 +16,29 @@ import css from '@/components/NotesPage/NotesPage.module.css';
 export default function NotesClient() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['notes', page, search],
-    queryFn: () => fetchNotes({ page, search, perPage: 12 }),
+    queryKey: ['notes', page, debouncedSearch],
+    queryFn: () =>
+      fetchNotes({ page, search: debouncedSearch, perPage: 12 }),
+    placeholderData: keepPreviousData,
   });
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setPage(1);
   };
 
   if (isLoading) {
